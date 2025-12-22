@@ -8,7 +8,7 @@ import { useParams } from 'next/navigation';
 
 export function ConversationList() {
   // Fetch ALL conversations to debug connection
-  const { data: conversations, isLoading, error } = useConversations(''); 
+  const { data: conversations, isLoading, error } = useConversations(); 
   const params = useParams();
   const currentChatId = params?.chatId as string | undefined;
 
