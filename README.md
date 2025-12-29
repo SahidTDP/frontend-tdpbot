@@ -11,8 +11,8 @@ Construido con **Next.js 15 (App Router)**, **TypeScript**, **Tailwind CSS** y *
 *   **Estilos**: [Tailwind CSS v4](https://tailwindcss.com/)
 *   **Componentes UI**: [shadcn/ui](https://ui.shadcn.com/)
 *   **Gestión de Estado**: [TanStack Query (React Query) v5](https://tanstack.com/query/latest)
-*   **Tiempo Real**: [Socket.IO Client](https://socket.io/)
-*   **Cliente HTTP**: Axios
+*   **Tiempo Real**: Supabase Realtime
+*   **Cliente HTTP**: Supabase PostgREST (`@supabase/supabase-js`)
 *   **Iconos**: Lucide React
 *   **Utilidades**: clsx, tailwind-merge, date-fns
 
@@ -20,7 +20,7 @@ Construido con **Next.js 15 (App Router)**, **TypeScript**, **Tailwind CSS** y *
 
 *   Node.js 18+
 *   pnpm (recomendado) o npm/yarn
-*   Un backend corriendo (local o remoto) que soporte la API REST y Socket.IO especificada.
+*   Un proyecto de Supabase (Postgres + Realtime) con tablas y RPCs configuradas.
 
 ## 🛠️ Instalación y Configuración
 
@@ -38,11 +38,12 @@ Construido con **Next.js 15 (App Router)**, **TypeScript**, **Tailwind CSS** y *
     cp .env.example .env.local
     ```
 
-    Edita `.env.local` con las URLs de tu backend:
+    Edita `.env.local` con las credenciales de Supabase:
 
     ```env
-    NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
-    NEXT_PUBLIC_WS_URL=http://localhost:3000
+    NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    NEXT_PUBLIC_AGENT_ID=00000000-0000-0000-0000-000000000000
     ```
 
 3.  **Iniciar Servidor de Desarrollo**:
@@ -69,19 +70,17 @@ src/
 │   └── page.tsx            # Redirección a /inbox
 ├── components/
 │   ├── ui/                 # Componentes reutilizables de shadcn/ui
-│   ├── providers.tsx       # Configuración de React Query
-│   └── socket-provider.tsx # Listener global de Socket.IO
+│   ├── providers.tsx       # Configuración de React Query + Realtime provider
+│   └── realtime-provider.tsx # Suscripción a Supabase Realtime
 ├── features/               # Módulos de funcionalidad específica
 │   ├── chat/               # Componentes del Chat (Window, Input, List, Header)
 │   └── inbox/              # Componentes del Inbox (ConversationList, Item)
 ├── hooks/                  # Custom Hooks (Lógica de negocio y API)
-│   ├── use-chat-actions.ts # Mutaciones: Take/Close
-│   ├── use-conversations.ts# Query: Listar conversaciones
-│   ├── use-messages.ts     # Query/Mutation: Mensajes
-│   └── use-socket-listener.ts # Lógica de eventos Socket.IO
+│   ├── use-chat-actions.ts # Mutaciones: Take/Close (RPC)
+│   ├── use-conversations.ts# Query: Listar conversaciones (PostgREST)
+│   ├── use-messages.ts     # Query/Mutation: Mensajes (PostgREST/RPC)
 ├── lib/                    # Utilidades y configuración base
-│   ├── api.ts              # Instancia de Axios
-│   ├── socket.ts           # Singleton de Socket.IO
+│   ├── supabase.ts         # Cliente Supabase
 │   └── utils.ts            # Helpers de clases CSS
 └── types/                  # Definiciones de tipos TypeScript
 ```
@@ -110,29 +109,35 @@ src/
 *   **TanStack Query**: Se encarga del caching, estados de carga (loading skeletons) y re-fetching.
 *   **Optimistic UI**: La interfaz reacciona inmediatamente a las acciones del usuario mientras se confirman en el backend.
 
-## 🔌 Integración Backend
+## 🔌 Integración con Supabase
 
-### API REST
-El cliente espera los siguientes endpoints:
+### RPCs y Tablas
+El panel usa PostgREST y RPCs:
 
-*   `GET /conversations?status=open|assigned`: Lista de chats.
-*   `GET /conversations/:chatId`: Detalles de un chat.
-*   `GET /conversations/:chatId/messages`: Historial de mensajes.
-*   `POST /conversations/:chatId/take`: Tomar conversación.
-*   `POST /conversations/:chatId/close`: Cerrar conversación.
-*   `POST /messages/send`: Enviar mensaje (`{ chat_id, text, agent_id }`).
-*   `POST /messages/human-reply`: Enviar respuesta de agente (`{ chat_id, text, agent_id }`).
+*   Tablas:
+    *   `public.conversations` (`id`, `chat_id`, `channel`, `status`, `assigned_to`, `hitl_locked`, `last_message_at`, ...)
+    *   `public.messages` (`id`, `conversation_id`, `direction`, `sender_type`, `text`, `meta`, `created_at`)
+*   RPCs:
+    *   `take_conversation(p_chat_id text, p_agent_id uuid)`
+    *   `close_conversation(p_chat_id text)`
+    *   `handle_outbound_log(p_chat_id text, p_channel text, p_text text, p_sender_type message_sender_type, p_meta jsonb)`
 
-### Eventos Socket.IO
-Escucha los siguientes eventos para reactividad:
+### Realtime
+Suscripciones:
 
-*   `message:new`: Payload `{ id, chat_id, text, sender_type, created_at }`.
-    *   Acción: Agrega el mensaje al chat activo y actualiza el preview/timestamp en el inbox.
-*   `conversation:updated`: Payload `{ chat_id, status, assigned_to, ... }`.
-    *   Acción: Actualiza el estado visual en la lista y en el header del chat.
+*   `messages` INSERT: invalida `['messages', chatId]` y `['conversations']`.
+*   `conversations` UPDATE: invalida `['conversations']` y `['conversation', chatId]`.
 
 ## 🎨 Personalización UI
 
 El diseño utiliza **Tailwind CSS** con variables CSS definidas en `globals.css`. Puedes cambiar fácilmente el tema de colores ajustando las variables `--primary`, `--secondary`, etc.
 
 Los componentes base están en `src/components/ui` y son propiedad del proyecto (no una librería externa opaca), por lo que puedes modificarlos libremente.
+
+## 🧭 Notas de despliegue (Vercel)
+
+Configura las variables:
+
+* `NEXT_PUBLIC_SUPABASE_URL`
+* `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+* `NEXT_PUBLIC_AGENT_ID` (temporal). Si falta en desarrollo, se muestran errores en consola y se deshabilitan acciones de Take/Send.

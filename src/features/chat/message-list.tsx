@@ -5,6 +5,7 @@ import { useMessages } from '@/hooks/use-messages';
 import { MessageBubble } from './message-bubble';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { DateSeparator } from './date-separator';
 
 interface MessageListProps {
   chatId: string;
@@ -34,12 +35,27 @@ export function MessageList({ chatId }: MessageListProps) {
     return <div className="flex-1 p-4 flex items-center justify-center text-muted-foreground">No messages yet</div>;
   }
 
+  const tz = 'America/Lima';
+  const now = Date.now();
+  const todayStr = new Date(now).toLocaleDateString('es-PE', { timeZone: tz });
+  const yesterdayStr = new Date(now - 24 * 60 * 60 * 1000).toLocaleDateString('es-PE', { timeZone: tz });
+  let lastDay = '';
+
   return (
     <ScrollArea className="flex-1 p-4 h-full">
       <div className="flex flex-col pb-4">
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
-        ))}
+        {messages.map((msg) => {
+          const dayKey = new Date(msg.created_at).toLocaleDateString('es-PE', { timeZone: tz });
+          const label = dayKey === todayStr ? 'Hoy' : dayKey === yesterdayStr ? 'Ayer' : dayKey;
+          const needSeparator = dayKey !== lastDay;
+          lastDay = dayKey;
+          return (
+            <div key={msg.id}>
+              {needSeparator && <DateSeparator label={label} />}
+              <MessageBubble message={msg} />
+            </div>
+          );
+        })}
         <div ref={bottomRef} />
       </div>
     </ScrollArea>

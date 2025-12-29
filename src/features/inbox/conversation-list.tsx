@@ -5,13 +5,48 @@ import { ConversationItem } from './conversation-item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useParams } from 'next/navigation';
+import { InboxFilters } from './inbox-filters';
+import { useState, useMemo } from 'react';
 
 export function ConversationList() {
-  // Fetch ALL conversations to debug connection
+  const [selectedStatuses, setSelectedStatuses] = useState<Array<'open'|'assigned'|'closed'>>([]);
+  const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
   const { data: conversations, isLoading, error } = useConversations(); 
   const params = useParams();
   const currentChatId = params?.chatId as string | undefined;
+  const onFilterChange = (f: { statuses: Array<'open'|'assigned'|'closed'>; unreadOnly: boolean }) => {
+    setSelectedStatuses(f.statuses);
+    setUnreadOnly(!!f.unreadOnly);
+  };
 
+  const list = conversations || [];
+ 
+  const counts = useMemo(() => {
+    const open = list.filter((c) => c.status === 'open').length;
+    const assigned = list.filter((c) => c.status === 'assigned').length;
+    const closed = list.filter((c) => c.status === 'closed').length;
+    const unread = list.filter((c) => (c as any).unread_count > 0).length;
+    return { open, assigned, closed, unread };
+  }, [list]);
+ 
+  const sortedConversations = useMemo(() => {
+    let filtered = list;
+    if (selectedStatuses.length) {
+      filtered = filtered.filter((c) => selectedStatuses.includes(c.status as any));
+    }
+    if (unreadOnly) {
+      filtered = filtered.filter((c) => ((c as any).unread_count || 0) > 0);
+    }
+    return [...filtered].sort((a, b) => {
+      const unreadA = (a as any).unread_count ? Number((a as any).unread_count) : 0;
+      const unreadB = (b as any).unread_count ? Number((b as any).unread_count) : 0;
+      if (unreadA !== unreadB) return unreadB - unreadA;
+      const timeA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+      const timeB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+      return timeB - timeA;
+    });
+  }, [list, selectedStatuses, unreadOnly]);
+ 
   if (isLoading) {
     return (
       <div className="p-4 space-y-4">
@@ -27,7 +62,7 @@ export function ConversationList() {
       </div>
     );
   }
-
+ 
   if (error) {
     return (
       <div className="p-4 text-center text-red-500 text-sm">
@@ -36,20 +71,15 @@ export function ConversationList() {
       </div>
     );
   }
-
-  if (!conversations?.length) {
+ 
+  if (!list.length) {
     return <div className="p-4 text-center text-muted-foreground">No conversations found (List empty)</div>;
   }
-
-  // Sort: last_message_at desc
-  const sortedConversations = [...conversations].sort((a, b) => {
-    const timeA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
-    const timeB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
-    return timeB - timeA;
-  });
-
+ 
   return (
-    <ScrollArea className="h-full">
+    <>
+      <InboxFilters counts={counts} onChange={onFilterChange} />
+      <ScrollArea className="h-full">
       <div className="flex flex-col">
         {sortedConversations.map((conv) => (
           <ConversationItem 
@@ -59,6 +89,7 @@ export function ConversationList() {
           />
         ))}
       </div>
-    </ScrollArea>
+      </ScrollArea>
+    </>
   );
 }

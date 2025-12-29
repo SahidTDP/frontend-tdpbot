@@ -1,10 +1,13 @@
 import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { Conversation } from '@/types';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { User, Lock, Clock } from 'lucide-react';
+import { useRelativeTime } from '@/hooks/use-relative-time';
+import { useChatActions } from '@/hooks/use-chat-actions';
+import { AGENT_ID } from '@/lib/agent';
+import { useAgents, getAgentName } from '@/hooks/use-agents';
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -12,6 +15,10 @@ interface ConversationItemProps {
 }
 
 export function ConversationItem({ conversation, isActive }: ConversationItemProps) {
+  const { takeChat, isTaking } = useChatActions(conversation.chat_id);
+  const rel = useRelativeTime(conversation.last_message_at, 30000);
+  const { data: agents = [] } = useAgents();
+  const assignedName = getAgentName(agents, conversation.assigned_to);
   const getStatusBadge = () => {
     switch (conversation.status) {
       case 'open':
@@ -25,7 +32,7 @@ export function ConversationItem({ conversation, isActive }: ConversationItemPro
         return (
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 gap-1">
             <User className="h-3 w-3" />
-            {conversation.assigned_to ? `Asignado a ${conversation.assigned_to}` : 'Asignado'}
+            {conversation.assigned_to === AGENT_ID ? 'Asignado a ti' : conversation.assigned_to ? 'Tomado' : 'Asignado'}
           </Badge>
         );
       case 'closed':
@@ -39,7 +46,7 @@ export function ConversationItem({ conversation, isActive }: ConversationItemPro
   };
 
   return (
-    <Link 
+    <Link
       href={`/chat/${conversation.chat_id}`}
       className={cn(
         "block p-3 border-b hover:bg-muted/50 transition-colors cursor-pointer",
@@ -53,22 +60,45 @@ export function ConversationItem({ conversation, isActive }: ConversationItemPro
         </span>
         {conversation.last_message_at && (
           <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-2">
-            {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true, locale: es })}
+            {rel}
           </span>
         )}
       </div>
-      
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex items-center justify-between gap-2 mb-2">
         <p className={cn(
           "text-sm truncate pr-2 flex-1",
-          conversation.status === 'open' ? "font-medium text-foreground" : "text-muted-foreground"
+          ((conversation as any).unread_count || 0) > 0 ? "font-medium text-foreground" : "text-muted-foreground"
         )}>
-          {conversation.preview_message || "Sin mensajes"}
+          {conversation.preview_message || ''}
         </p>
+        {((conversation as any).unread_count || 0) > 0 && (
+          <Badge variant="default" className="text-[10px] px-1.5 py-0.5">
+            {Number((conversation as any).unread_count)}
+          </Badge>
+        )}
       </div>
-
-      <div className="flex items-center">
-        {getStatusBadge()}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {getStatusBadge()}
+          {conversation.status !== 'open' && assignedName && (
+            <span className="text-[10px] text-muted-foreground">
+              Asignado a {String(conversation.assigned_to) === String(AGENT_ID) ? 'ti' : assignedName}
+            </span>
+          )}
+        </div>
+        {conversation.status === 'open' && !conversation.assigned_to && (
+          <Button
+            size="sm"
+            disabled={isTaking}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              takeChat();
+            }}
+          >
+            Tomar chat
+          </Button>
+        )}
       </div>
     </Link>
   );

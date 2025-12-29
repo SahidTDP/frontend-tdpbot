@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { AGENT_ID } from '@/lib/agent';
+import { supabase } from '@/lib/supabase';
+import { AGENT_ID, ensureAgentConfigured } from '@/lib/agent';
 import { toast } from 'sonner';
+import { postAgentMessage } from '@/lib/edge';
 
 interface HumanReplyPayload {
   chat_id: string;
@@ -13,12 +14,13 @@ export function useHumanReply(chatId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (text: string) => 
-      api.post(`/messages/human-reply`, { 
-        chat_id: chatId, 
-        agent_id: AGENT_ID,
-        text 
-      } as HumanReplyPayload),
+    mutationFn: async (text: string) => {
+      if (!ensureAgentConfigured()) {
+        toast.error('Agent ID no configurado. Configura NEXT_PUBLIC_AGENT_ID.');
+        throw new Error('NEXT_PUBLIC_AGENT_ID no configurado');
+      }
+      await postAgentMessage(chatId, text);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['messages', chatId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });

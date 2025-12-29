@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useHumanReply } from '@/hooks/use-human-reply';
 import { Loader2, Send, Lock, UserX } from 'lucide-react';
 import { Conversation } from '@/types';
-import { AGENT_ID } from '@/lib/agent';
+import { AGENT_ID, ensureAgentConfigured } from '@/lib/agent';
 
 interface ChatInputProps {
   chatId: string;
@@ -16,6 +16,7 @@ interface ChatInputProps {
 export function ChatInput({ chatId, conversation }: ChatInputProps) {
   const [content, setContent] = useState('');
   const { mutate: sendReply, isPending } = useHumanReply(chatId);
+  const agentOk = ensureAgentConfigured();
 
   const handleSend = () => {
     if (!content.trim()) return;
@@ -36,6 +37,10 @@ export function ChatInput({ chatId, conversation }: ChatInputProps) {
   let blockReason = '';
   let BlockIcon = Lock;
 
+  if (!agentOk) {
+    isBlocked = true;
+    blockReason = 'Agent ID not configured (NEXT_PUBLIC_AGENT_ID)';
+  } else
   if (conversation.status === 'open') {
     isBlocked = true;
     blockReason = 'Debes tomar el chat para responder';

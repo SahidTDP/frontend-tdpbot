@@ -5,6 +5,9 @@ import { ChatHeader } from './chat-header';
 import { MessageList } from './message-list';
 import { ChatInput } from './chat-input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useMarkReadOnOpen } from '@/hooks/use-mark-read-on-open';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface ChatWindowProps {
   chatId: string;
@@ -12,6 +15,17 @@ interface ChatWindowProps {
 
 export function ChatWindow({ chatId }: ChatWindowProps) {
   const { data: conversation, isLoading } = useConversation(chatId);
+  useMarkReadOnOpen(chatId, conversation);
+  const router = useRouter();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        router.push('/inbox');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [router]);
 
   if (isLoading) {
     return (
