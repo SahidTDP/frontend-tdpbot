@@ -92,7 +92,7 @@ src/
 *   Indicadores visuales para estados:
     *   🔵 **Open**: Resaltado, requiere atención.
     *   🔘 **Assigned**: Badge gris, ya está siendo atendido.
-*   Actualización automática mediante **Socket.IO** (`conversation:updated`) y **React Query** (invalidación inteligente).
+*   Actualización automática mediante **Supabase Realtime** (INSERT/UPDATE en Postgres) y **React Query** (invalidación inteligente).
 
 ### 2. Chat Interface
 *   **Header**: Muestra ID, estado y agente asignado.
@@ -121,12 +121,22 @@ El panel usa PostgREST y RPCs:
     *   `take_conversation(p_chat_id text, p_agent_id uuid)`
     *   `close_conversation(p_chat_id text)`
     *   `handle_outbound_log(p_chat_id text, p_channel text, p_text text, p_sender_type message_sender_type, p_meta jsonb)`
+    *   `mark_conversation_read(p_chat_id text, p_agent_id uuid)` (expuesta en `public` o añade `rpc` a schemas)
 
 ### Realtime
 Suscripciones:
 
 *   `messages` INSERT: invalida `['messages', chatId]` y `['conversations']`.
 *   `conversations` UPDATE: invalida `['conversations']` y `['conversation', chatId]`.
+
+El provider aplica actualizaciones de cache optimistas:
+- Si el mensaje llega al chat activo, se hace append inmediato en `['messages', chatId]` y se resetea `unread_count`.
+- Para otros chats, se incrementa `unread_count` si el mensaje no es del agente y se actualiza `preview_message` + `last_message_at`.
+
+### Edge Functions
+- Envío de respuestas del agente (y mensajes de sistema como “{Nombre} ha entrado al chat”) se realiza vía:
+  - `POST https://<project>.functions.supabase.co/send-agent-message` con `Authorization: Bearer <NEXT_PUBLIC_SUPABASE_ANON_KEY>` y `apikey` igual al anon key.
+  - Body: `{ "chat_id": "...", "text": "..." }`
 
 ## 🎨 Personalización UI
 
@@ -141,3 +151,15 @@ Configura las variables:
 * `NEXT_PUBLIC_SUPABASE_URL`
 * `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 * `NEXT_PUBLIC_AGENT_ID` (temporal). Si falta en desarrollo, se muestran errores en consola y se deshabilitan acciones de Take/Send.
+
+## 🖼️ Soporte de imágenes
+- Mensajes pueden tener `message_type='image'` y `media_url` con la URL pública de Supabase Storage.
+- La UI también soporta fallbacks desde campos `raw.media.storage_url` o `raw.messages[0].image.url` (este último puede expirar).
+- Configuración de imágenes remotas en `next.config.ts`:
+  - Permite `*.supabase.co` y el host de `NEXT_PUBLIC_SUPABASE_URL`, además de `lookaside.fbsbx.com` para WhatsApp attachments.
+- Miniatura con Next/Image y lightbox al hacer click; muestra “Imagen no disponible” si la URL no carga.
+
+## 🔍 Filtros y “Sin leer”
+- Filtros compactos y desplegables en el Inbox: Abiertos, Asignados, Cerrados y “Sin leer”.
+- Prioriza conversaciones con `unread_count > 0`, luego ordena por `last_message_at`.
+- Al abrir un chat, se marca leído automáticamente (RPC `mark_conversation_read`) y se resetea el contador en la UI.
