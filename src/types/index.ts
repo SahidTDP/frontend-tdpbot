@@ -20,6 +20,9 @@ export interface Message {
   direction?: 'inbound' | 'outbound';
   created_at: string;
   meta?: any;
+  message_type?: 'text' | 'image';
+  media_url?: string | null;
+  raw?: any;
 }
 
 export interface SendMessagePayload {

@@ -31,6 +31,18 @@ export function useMessages(chatId: string) {
         console.error('Error fetching messages:', e2);
         throw e2;
       }
+      if (chatId === '51932430421') {
+        const last = (msgs || []).slice(-5);
+        console.log('[Debug] useMessages last 5 for', chatId, last.map(m => ({
+          id: m.id,
+          sender_type: m.sender_type,
+          text: m.text,
+          message_type: (m as any).message_type,
+          media_url: (m as any).media_url,
+          meta_raw: (m as any).meta?.raw,
+          created_at: m.created_at,
+        })));
+      }
       return (msgs || []) as Message[];
     },
     enabled: !!chatId,

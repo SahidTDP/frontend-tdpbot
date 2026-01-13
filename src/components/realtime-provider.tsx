@@ -37,7 +37,16 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         async (payload) => {
           const newMsg = payload.new as any;
           const convId = newMsg?.conversation_id as string | undefined;
-          console.log('[Realtime] messages INSERT payload:', newMsg);
+          console.log('[Realtime] messages INSERT payload:', {
+            id: newMsg?.id,
+            conversation_id: convId,
+            sender_type: newMsg?.sender_type,
+            text: newMsg?.text,
+            message_type: newMsg?.message_type,
+            media_url: newMsg?.media_url,
+            raw_media_storage_url: newMsg?.raw?.media?.storage_url,
+            raw_image_url: newMsg?.raw?.messages?.[0]?.image?.url,
+          });
           if (!convId) {
             console.warn('[Realtime] Missing conversation_id on message payload');
             return;
@@ -61,21 +70,36 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
               queryClient.setQueryData(['conversations'], (old: Conversation[] | undefined) => {
                 if (!old) return old;
                 const incUnread = newMsg.sender_type !== 'agent';
+                let rawObj = newMsg.meta?.raw ?? newMsg.raw;
+                if (rawObj && typeof rawObj === 'string') {
+                  try { rawObj = JSON.parse(rawObj); } catch { rawObj = null; }
+                }
+                const sanitize = (u?: string) => typeof u === 'string' ? u.trim().replace(/^`+|`+$/g, '').replace(/\\+$/g, '') : '';
+                const previewMedia = sanitize(newMsg.media_url) || sanitize(rawObj?.media?.storage_url) || sanitize(rawObj?.messages?.[0]?.image?.url);
+                console.log('[Realtime] preview selection (inactive)', {
+                  id: newMsg?.id,
+                  text: newMsg?.text,
+                  previewMedia,
+                  used: newMsg?.text && newMsg?.text.length > 0 ? 'text' : (previewMedia ? 'media' : 'empty'),
+                  incUnread
+                });
                 const updated = old.map((c) =>
                   String(c.chat_id) === String(chatId)
                     ? ({
                         ...c,
                         last_message_at: newMsg.created_at,
-                        preview_message: newMsg.text,
+                        preview_message: newMsg.text && newMsg.text.length > 0
+                          ? newMsg.text
+                          : (previewMedia ? '📷 Imagen' : ''),
                         unread_count: incUnread ? (((c as any).unread_count || 0) + 1) : (c as any).unread_count,
                       } as any)
                     : c
-                );
-                return updated.sort(
-                  (a, b) =>
-                    new Date(b.last_message_at).getTime() -
-                    new Date(a.last_message_at).getTime()
-                );
+              );
+              return updated.sort(
+                (a, b) =>
+                  new Date(b.last_message_at).getTime() -
+                  new Date(a.last_message_at).getTime()
+              );
               });
               queryClient.invalidateQueries({ queryKey: ['conversations'] });
             } catch {
@@ -126,9 +150,28 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
             // Update conversation cache (list and detail)
             queryClient.setQueryData(['conversations'], (old: Conversation[] | undefined) => {
               if (!old) return old;
+              let rawObj = newMsg.meta?.raw ?? newMsg.raw;
+              if (rawObj && typeof rawObj === 'string') {
+                try { rawObj = JSON.parse(rawObj); } catch { rawObj = null; }
+              }
+              const sanitize = (u?: string) => typeof u === 'string' ? u.trim().replace(/^`+|`+$/g, '').replace(/\\+$/g, '') : '';
+              const previewMedia = sanitize(newMsg.media_url) || sanitize(rawObj?.media?.storage_url) || sanitize(rawObj?.messages?.[0]?.image?.url);
+              console.log('[Realtime] preview selection (active)', {
+                id: newMsg?.id,
+                text: newMsg?.text,
+                previewMedia,
+                used: newMsg?.text && newMsg?.text.length > 0 ? 'text' : (previewMedia ? 'media' : 'empty')
+              });
               const updated = old.map((c) =>
                 String(c.chat_id) === String(chatId)
-                  ? ({ ...c, last_message_at: message.created_at, preview_message: message.text, unread_count: 0 } as any)
+                  ? ({
+                      ...c,
+                      last_message_at: message.created_at,
+                      preview_message: newMsg.text && newMsg.text.length > 0
+                        ? newMsg.text
+                        : (previewMedia ? '📷 Imagen' : ''),
+                      unread_count: 0
+                    } as any)
                   : c
               );
               return updated.sort(

@@ -18,6 +18,18 @@ export function MessageList({ chatId }: MessageListProps) {
   useEffect(() => {
     if (messages) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      if (chatId === '51932430421') {
+        const last = messages.slice(-5);
+        console.log('[Debug] MessageList last 5 for', chatId, last.map(m => ({
+          id: m.id,
+          sender_type: m.sender_type,
+          text: m.text,
+          message_type: m.message_type,
+          media_url: m.media_url,
+          meta_raw: (m as any).meta?.raw,
+          created_at: m.created_at,
+        })));
+      }
     }
   }, [messages]);
 
