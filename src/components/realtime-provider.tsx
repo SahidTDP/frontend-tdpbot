@@ -74,7 +74,24 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
                 if (rawObj && typeof rawObj === 'string') {
                   try { rawObj = JSON.parse(rawObj); } catch { rawObj = null; }
                 }
-                const sanitize = (u?: string) => typeof u === 'string' ? u.trim().replace(/^`+|`+$/g, '').replace(/\\+$/g, '') : '';
+                const sanitize = (u?: string) => {
+                  if (typeof u !== 'string') return '';
+                  let s = u.trim();
+                  s = s.replace(/['"`]/g, '');
+                  s = s.replace(/\\+/g, '');
+                  const m = s.match(/https?:\/\/[^\s]+?\.(jpg|jpeg|png|webp)/i);
+                  if (m && m[0]) return m[0];
+                  const exts = ['.jpg', '.jpeg', '.png', '.webp'];
+                  for (const ext of exts) {
+                    const idx = s.toLowerCase().lastIndexOf(ext);
+                    if (idx !== -1) {
+                      s = s.slice(0, idx + ext.length);
+                      break;
+                    }
+                  }
+                  s = s.replace(/\/+$/g, '');
+                  return s;
+                };
                 const previewMedia = sanitize(newMsg.media_url) || sanitize(rawObj?.media?.storage_url) || sanitize(rawObj?.messages?.[0]?.image?.url);
                 console.log('[Realtime] preview selection (inactive)', {
                   id: newMsg?.id,
@@ -154,7 +171,24 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
               if (rawObj && typeof rawObj === 'string') {
                 try { rawObj = JSON.parse(rawObj); } catch { rawObj = null; }
               }
-              const sanitize = (u?: string) => typeof u === 'string' ? u.trim().replace(/^`+|`+$/g, '').replace(/\\+$/g, '') : '';
+              const sanitize = (u?: string) => {
+                if (typeof u !== 'string') return '';
+                let s = u.trim();
+                s = s.replace(/['"`]/g, '');
+                s = s.replace(/\\+/g, '');
+                const m = s.match(/https?:\/\/[^\s]+?\.(jpg|jpeg|png|webp)/i);
+                if (m && m[0]) return m[0];
+                const exts = ['.jpg', '.jpeg', '.png', '.webp'];
+                for (const ext of exts) {
+                  const idx = s.toLowerCase().lastIndexOf(ext);
+                  if (idx !== -1) {
+                    s = s.slice(0, idx + ext.length);
+                    break;
+                  }
+                }
+                s = s.replace(/\/+$/g, '');
+                return s;
+              };
               const previewMedia = sanitize(newMsg.media_url) || sanitize(rawObj?.media?.storage_url) || sanitize(rawObj?.messages?.[0]?.image?.url);
               console.log('[Realtime] preview selection (active)', {
                 id: newMsg?.id,

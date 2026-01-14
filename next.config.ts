@@ -2,6 +2,17 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    domains: [
+      'lookaside.fbsbx.com',
+      (() => {
+        try {
+          const url = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL) : null;
+          return url ? url.hostname : 'vkjcnxxlfrtmvdlskfec.supabase.co';
+        } catch {
+          return 'vkjcnxxlfrtmvdlskfec.supabase.co';
+        }
+      })(),
+    ],
     remotePatterns: [
       {
         protocol: 'https',

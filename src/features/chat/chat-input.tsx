@@ -65,7 +65,7 @@ export function ChatInput({ chatId, conversation }: ChatInputProps) {
   }
 
   return (
-    <div className="p-4 border-t bg-background">
+    <div className="p-4 border-t bg-background sticky bottom-0 z-10">
       <div className="flex gap-2">
         <Textarea
           value={content}

@@ -1,15 +1,17 @@
 import { ConversationList } from '@/features/inbox/conversation-list';
+import { InboxHeader } from '@/features/inbox/inbox-header';
+import { InboxFilterProvider } from '@/features/inbox/inbox-filter-context';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen overflow-hidden flex-col md:flex-row">
-      <aside className="md:w-80 w-full border-b md:border-r md:border-b-0 flex flex-col bg-background">
-        <div className="p-4 border-b font-bold text-lg h-16 flex items-center justify-between">
-          <span>Inbox</span>
-        </div>
-        <ConversationList />
+    <div className="flex h-screen flex-col md:flex-row">
+      <aside className="md:w-80 w-full md:border-r border-b md:border-b-0 flex flex-col bg-background sticky top-0 z-20 md:static md:z-auto">
+        <InboxFilterProvider>
+          <InboxHeader />
+          <ConversationList />
+        </InboxFilterProvider>
       </aside>
-      <main className="flex-1 flex flex-col overflow-hidden relative">
+      <main className="flex-1 flex flex-col relative min-h-0">
         {children}
       </main>
     </div>

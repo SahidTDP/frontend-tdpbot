@@ -40,7 +40,7 @@ export function InboxFilters({ counts, onChange }: InboxFiltersProps) {
   if (!hasAnyFilter) return null;
 
   return (
-    <div className="sticky top-16 z-10 bg-background/80 backdrop-blur border-b">
+    <div className="bg-background border-b">
       <div className="px-4 py-2 flex items-center justify-between">
         <span className="text-sm font-medium">Filtros</span>
         <Button variant="outline" size="sm" onClick={toggleExpanded}>

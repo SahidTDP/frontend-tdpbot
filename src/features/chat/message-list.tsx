@@ -54,7 +54,7 @@ export function MessageList({ chatId }: MessageListProps) {
   let lastDay = '';
 
   return (
-    <ScrollArea className="flex-1 p-4 h-full">
+    <ScrollArea className="flex-1 min-h-0 p-4 h-full">
       <div className="flex flex-col pb-4">
         {messages.map((msg) => {
           const dayKey = new Date(msg.created_at).toLocaleDateString('es-PE', { timeZone: tz });

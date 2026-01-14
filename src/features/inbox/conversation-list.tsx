@@ -5,19 +5,15 @@ import { ConversationItem } from './conversation-item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useParams } from 'next/navigation';
-import { InboxFilters } from './inbox-filters';
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
+import { useInboxFilters } from './inbox-filter-context';
 
 export function ConversationList() {
-  const [selectedStatuses, setSelectedStatuses] = useState<Array<'open'|'assigned'|'closed'>>([]);
-  const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
+  const { statuses: selectedStatuses, unreadOnly } = useInboxFilters();
   const { data: conversations, isLoading, error } = useConversations(); 
   const params = useParams();
   const currentChatId = params?.chatId as string | undefined;
-  const onFilterChange = (f: { statuses: Array<'open'|'assigned'|'closed'>; unreadOnly: boolean }) => {
-    setSelectedStatuses(f.statuses);
-    setUnreadOnly(!!f.unreadOnly);
-  };
+  
 
   const list = conversations || [];
  
@@ -77,9 +73,8 @@ export function ConversationList() {
   }
  
   return (
-    <>
-      <InboxFilters counts={counts} onChange={onFilterChange} />
-      <ScrollArea className="h-full">
+    <div className="flex flex-col md:h-full h-[calc(100vh-4rem)]">
+      <ScrollArea className="flex-1 min-h-0">
       <div className="flex flex-col">
         {sortedConversations.map((conv) => (
           <ConversationItem 
@@ -90,6 +85,6 @@ export function ConversationList() {
         ))}
       </div>
       </ScrollArea>
-    </>
+    </div>
   );
 }
