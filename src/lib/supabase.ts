@@ -7,6 +7,7 @@ export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   {
     auth: { persistSession: false, autoRefreshToken: true },
+    db: { schema: 'chatbot' },
     realtime: { params: { eventsPerSecond: 10 } },
   }
 );

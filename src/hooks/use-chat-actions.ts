@@ -65,7 +65,7 @@ export function useChatActions(chatId: string) {
         toast.error('Este chat ya fue tomado por otro agente');
       } else {
         if ((error as any)?.code === '404') {
-          toast.error('RPC take_conversation no disponible (404). Verifica que exista en Supabase (schema público).');
+          toast.error('RPC take_conversation no disponible (404). Verifica que exista en Supabase (schema chatbot).');
         } else {
           toast.error('Error al tomar el chat');
         }

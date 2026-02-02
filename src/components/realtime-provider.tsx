@@ -33,7 +33,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       .channel('realtime-messages')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
+        { event: 'INSERT', schema: 'chatbot', table: 'messages' },
         async (payload) => {
           const newMsg = payload.new as any;
           const convId = newMsg?.conversation_id as string | undefined;
